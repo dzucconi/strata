@@ -1,5 +1,7 @@
 # strata
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/b3ee12fb-a8f3-415f-ab55-aea1b6d61425/deploy-status)](https://app.netlify.com/sites/damonzucconi-strata/deploys)
+
 ## Meta
 
 - **State**: production
