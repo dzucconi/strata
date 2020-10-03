@@ -1,0 +1,132 @@
+body {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 16px;
+  line-height: 1.33;
+  background-color: white;
+  color: black;
+  text-align: justify;
+}
+
+br {
+  display: none;
+}
+
+h1,
+h2,
+h3,
+div,
+form,
+p {
+  display: inline;
+  font-weight: normal;
+  font-size: 100%;
+}
+
+h1 {
+  text-decoration: underline;
+}
+
+.Acknowledge,
+div,
+time {
+  &:not(.Ignore) {
+    &:before,
+    &:after {
+      color: gray;
+    }
+    &:before {
+      content: "<";
+    }
+    &:after {
+      content: ">";
+    }
+  }
+}
+
+p {
+  &:before {
+    content: "¶ ";
+    color: gray;
+  }
+}
+
+a {
+  color: black;
+  text-decoration: none;
+}
+
+table {
+  width: 100%;
+  border: 1px solid;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+
+  > tbody > tr > td {
+    border-bottom: 1px solid;
+    border-left: 1px solid;
+  }
+}
+
+.Entry {
+  $self: &;
+
+  &--index {
+    &:hover {
+      color: red;
+
+      #{$self}__title {
+        text-decoration: underline;
+      }
+    }
+
+    #{$self}__title {
+      color: blue;
+    }
+  }
+
+  &__title {
+    &::after {
+      content: " ";
+    }
+  }
+
+  &__thumb {
+    vertical-align: middle;
+    display: inline-block;
+    outline: 1px solid blue;
+  }
+
+  &__find {
+    color: blue;
+  }
+}
+
+.Modal {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+
+  &__close {
+    padding: 0;
+    flex-basis: 10%;
+    height: 100%;
+    cursor: zoom-out;
+    background-color: rgba(0, 0, 0, 0.5);
+
+    &:focus {
+      outline: 0;
+      background-color: rgba(0, 0, 0, 0.25);
+    }
+  }
+
+  &__content {
+    flex-basis: 90%;
+    background-color: white;
+    padding: 0.5rem 1rem;
+  }
+}
