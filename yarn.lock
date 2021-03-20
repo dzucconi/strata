@@ -936,10 +936,10 @@
     "@parcel/utils" "^1.11.0"
     physical-cpu-count "^2.0.0"
 
-"@types/page@1.11.1":
-  version "1.11.1"
-  resolved "https://registry.yarnpkg.com/@types/page/-/page-1.11.1.tgz#3b329a62843d4b9e47b494ebeab4a240be65a0a1"
-  integrity sha512-BpOTA/w+PgZeQ1iJqy0le9VSXOKV7qcoX/+m/obCtzENwPOrtVybdAaOAFD6xwAdieAq+GimObGJjWTCIBz4nA==
+"@types/page@1.11.2":
+  version "1.11.2"
+  resolved "https://registry.yarnpkg.com/@types/page/-/page-1.11.2.tgz#597cd30101a7834dd08fa07756167336fd53ab79"
+  integrity sha512-Ik+hUhEolItI3aOXMz+dCHAU5yt3+NX8TfSW70pVxDItyNMwIrVc3gRL8H/ODDoiN7hL9nFHicMrWiGB7FBuUw==
 
 "@types/q@^1.5.1":
   version "1.5.4"
