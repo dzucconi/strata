@@ -11,7 +11,7 @@
     "start": "parcel src/index.html --open"
   },
   "devDependencies": {
-    "@types/page": "1.11.4",
+    "@types/page": "1.11.5",
     "@types/qs": "6.9.7",
     "parcel": "1.12.4",
     "sass": "1.41.1",
