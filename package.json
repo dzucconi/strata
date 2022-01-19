@@ -13,7 +13,7 @@
   "devDependencies": {
     "@types/page": "1.11.5",
     "@types/qs": "6.9.7",
-    "parcel": "1.12.4",
+    "parcel": "2.2.1",
     "sass": "1.49.0",
     "typescript": "4.5.4"
   },
