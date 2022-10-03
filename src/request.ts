@@ -35,7 +35,7 @@ export const INDEX_QUERY = `
       ... on Collection {
         contents(page: $page, per: 50, sortBy: $sort) {
           id
-          title: value
+          title: value(key: "title")
           entity {
             kind: __typename
             ... on Image {
