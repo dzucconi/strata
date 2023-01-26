@@ -4,10 +4,10 @@ import { INDEX_QUERY, request, IndexQuery } from "../request";
 
 const STATE = { page: 0, reset: false };
 
-type IndexContext = PageJS.Context & {
+interface IndexContext extends PageJS.Context {
   query?: Record<string, string>;
   teardown: () => void;
-};
+}
 
 const index = (ctx: IndexContext) => {
   const observer = new IntersectionObserver((entries) => {
@@ -59,7 +59,7 @@ const index = (ctx: IndexContext) => {
   const next = async (page: number) => {
     const data = await request<IndexQuery>({
       query: INDEX_QUERY,
-      variables: { page, sort: ctx.query.sort || "CREATED_AT_DESC" },
+      variables: { page, sort: ctx.query?.sort || "CREATED_AT_DESC" },
     });
 
     if (data.strata.contents.length === 0) {
@@ -88,12 +88,12 @@ const index = (ctx: IndexContext) => {
     DOM.root().innerHTML = strip(`
       <select id="navigation">
         <option value="CREATED_AT_DESC" ${
-          ctx.query.sort === "CREATED_AT_DESC" ? "selected" : ""
+          ctx.query?.sort === "CREATED_AT_DESC" ? "selected" : ""
         }>
           descending
         </option>
         <option value="CREATED_AT_ASC" ${
-          ctx.query.sort === "CREATED_AT_ASC" ? "selected" : ""
+          ctx.query?.sort === "CREATED_AT_ASC" ? "selected" : ""
         }>
           ascending
         </option>
@@ -124,7 +124,11 @@ const index = (ctx: IndexContext) => {
 };
 
 export const routes = () => {
+  // FIXME: Correct context typing
+  // @ts-ignore
   page("/", index);
+
+  // @ts-ignore
   page.exit("/", (ctx: IndexContext, next) => {
     ctx.teardown();
     next();

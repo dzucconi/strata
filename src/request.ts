@@ -76,7 +76,7 @@ export const SHOW_QUERY = `
     strata: object {
       ... on Collection {
         content(id: $id) {
-          title: value
+          title: value(key: "title")
           createdAt(relative: true)
           timestamp: createdAt
           metadata

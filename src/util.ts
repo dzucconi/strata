@@ -5,7 +5,7 @@ export const strip = (html: string) => html.replace(/>\s+</g, "><");
 
 export const tag = (html: string) => {
   return new DOMParser().parseFromString(strip(html), "text/html").body
-    .firstChild;
+    .firstChild!;
 };
 
 export const format = (input: string) => {
@@ -21,9 +21,9 @@ export const format = (input: string) => {
 };
 
 export const DOM = {
-  root: () => document.getElementById("root"),
-  contents: () => document.getElementById("contents"),
-  sentinel: () => document.getElementById("sentinel"),
-  modal: () => document.getElementById("modal"),
-  navigation: () => document.getElementById("navigation"),
+  root: () => document.getElementById("root")!,
+  contents: () => document.getElementById("contents")!,
+  sentinel: () => document.getElementById("sentinel")!,
+  modal: () => document.getElementById("modal")!,
+  navigation: () => document.getElementById("navigation")!,
 };

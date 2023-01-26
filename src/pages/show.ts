@@ -116,7 +116,11 @@ export const show = async (ctx: ShowContext) => {
 };
 
 export const routes = () => {
+  // FIXME: Correct context typing
+  // @ts-ignore
   page("/:id", show);
+
+  // @ts-ignore
   page.exit("/:id", (ctx: ShowContext, next) => {
     ctx.teardown();
     next();
