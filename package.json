@@ -9,7 +9,8 @@
     "generate": "node ./scripts/generate-content.js",
     "compile": "parcel build src/index.html",
     "build": "yarn clean && yarn generate && yarn compile && yarn copy",
-    "start": "yarn generate && parcel src/index.html --open",
+    "dev": "yarn generate && parcel src/index.html --open",
+    "start": "yarn dev",
     "preview": "serve --single dist"
   },
   "engines": {

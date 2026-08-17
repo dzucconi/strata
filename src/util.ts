@@ -25,4 +25,5 @@ export const DOM = {
   contents: () => document.getElementById("contents")!,
   modal: () => document.getElementById("modal")!,
   navigation: () => document.getElementById("navigation")!,
+  search: () => document.getElementById("search")!,
 };

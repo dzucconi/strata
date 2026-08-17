@@ -5,6 +5,67 @@ import { CONTENTS } from "../generated/content";
 
 const STATE = { reset: false };
 
+const SEARCH_INDEX = new Map(
+  CONTENTS.map((content) => {
+    const { id, title, entity, metadata } = content;
+    const metadataText = Object.keys(metadata)
+      .map((key) => `${key} ${metadata[key]}`)
+      .join(" ");
+    const entityText =
+      entity.kind === "Text"
+        ? entity.body
+        : entity.kind === "Link"
+        ? entity.url
+        : "";
+
+    return [
+      id,
+      [title || "", entityText, metadataText].join(" ").toLowerCase(),
+    ];
+  })
+);
+
+const clearSearchHighlight = () => {
+  if (typeof CSS !== "undefined") {
+    (CSS as any).highlights?.delete("search");
+  }
+};
+
+const highlightMatches = (entries: HTMLElement[], query: string) => {
+  clearSearchHighlight();
+
+  const registry = (CSS as any).highlights;
+  const Highlight = (window as any).Highlight;
+  if (!query || !registry || !Highlight) return;
+
+  const ranges: Range[] = [];
+
+  entries.forEach((entry) => {
+    if (entry.hidden) return;
+
+    const walker = document.createTreeWalker(entry, NodeFilter.SHOW_TEXT);
+    let node = walker.nextNode();
+
+    while (node) {
+      const text = node.nodeValue || "";
+      const normalized = text.toLowerCase();
+      let index = normalized.indexOf(query);
+
+      while (index !== -1) {
+        const range = document.createRange();
+        range.setStart(node, index);
+        range.setEnd(node, index + query.length);
+        ranges.push(range);
+        index = normalized.indexOf(query, index + query.length);
+      }
+
+      node = walker.nextNode();
+    }
+  });
+
+  registry.set("search", new Highlight(...ranges));
+};
+
 interface IndexContext extends PageJS.Context {
   query?: Record<string, string>;
   teardown: () => void;
@@ -41,9 +102,11 @@ const index = (ctx: IndexContext) => {
           ].join("");
 
           return `
-            <a href="${id}" class="Entry Entry--index Acknowledge">
-              ${html}
-            </a>
+            <div class="EntryFilter Ignore" data-id="${id}">
+              <a href="${id}" class="Entry Entry--index Acknowledge">
+                ${html}
+              </a>
+            </div>
           `;
         })
         .join("")}</div>`
@@ -54,6 +117,11 @@ const index = (ctx: IndexContext) => {
     STATE.reset = false;
 
     DOM.root().innerHTML = strip(`
+      <input
+        id="search"
+        type="search"
+        placeholder="Search"
+        aria-label="Search entries" />
       <select id="navigation">
         <option value="CREATED_AT_DESC" ${
           ctx.query?.sort === "CREATED_AT_DESC" ? "selected" : ""
@@ -80,16 +148,40 @@ const index = (ctx: IndexContext) => {
     reset();
   }
 
-  const handleInput = (event: Event) => {
+  let searchFrame = 0;
+  const entries = Array.from(
+    DOM.contents().querySelectorAll<HTMLElement>(".EntryFilter")
+  ) as HTMLElement[];
+
+  const handleSort = (event: Event) => {
     const { value } = <HTMLSelectElement>event.currentTarget;
     STATE.reset = true;
     page(`/?sort=${value}`);
   };
 
-  DOM.navigation().addEventListener("input", handleInput);
+  const handleSearch = (event: Event) => {
+    const query = (<HTMLInputElement>event.currentTarget).value
+      .trim()
+      .toLowerCase();
+
+    cancelAnimationFrame(searchFrame);
+    searchFrame = requestAnimationFrame(() => {
+      entries.forEach((entry) => {
+        const text = SEARCH_INDEX.get(Number(entry.dataset.id)) || "";
+        entry.hidden = !text.includes(query);
+      });
+      highlightMatches(entries, query);
+    });
+  };
+
+  DOM.navigation().addEventListener("input", handleSort);
+  DOM.search().addEventListener("input", handleSearch);
 
   ctx.teardown = () => {
-    DOM.navigation().removeEventListener("input", handleInput);
+    cancelAnimationFrame(searchFrame);
+    clearSearchHighlight();
+    DOM.navigation().removeEventListener("input", handleSort);
+    DOM.search().removeEventListener("input", handleSearch);
   };
 };
 

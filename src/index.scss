@@ -57,6 +57,21 @@ a {
   text-decoration: none;
 }
 
+#search {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid;
+  padding: 0.25rem 1rem;
+}
+
+::highlight(search) {
+  color: inherit;
+  background-color: yellow;
+}
+
 table {
   width: 100%;
   border: 1px solid;
@@ -101,6 +116,10 @@ table {
   &__find {
     color: blue;
   }
+}
+
+.EntryFilter[hidden] {
+  display: none;
 }
 
 .Modal {

@@ -8,11 +8,12 @@ Requires Node.js 18 or newer.
 
 ```sh
 yarn install
-yarn start
+yarn dev
 ```
 
 This fetches the complete collection, generates the local static data, starts
-Parcel, and opens the site in a browser.
+Parcel, and opens the site in a browser. TypeScript and Sass changes update
+automatically with hot module reloading.
 
 To test the same production build that Netlify publishes:
 
@@ -21,7 +22,8 @@ yarn build
 yarn preview
 ```
 
-The preview command prints the local URL to open.
+The preview command prints the local URL to open. It serves the finished build
+and does not watch for changes.
 
 ## Meta
 
