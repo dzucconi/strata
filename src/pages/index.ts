@@ -2,28 +2,12 @@ import page from "page";
 import { tag, format, strip, DOM } from "../util";
 import { Content } from "../content";
 import { CONTENTS } from "../generated/content";
+import { createSearchClient } from "../search";
 
 const STATE = { reset: false };
-
-const SEARCH_INDEX = new Map(
-  CONTENTS.map((content) => {
-    const { id, title, entity, metadata } = content;
-    const metadataText = Object.keys(metadata)
-      .map((key) => `${key} ${metadata[key]}`)
-      .join(" ");
-    const entityText =
-      entity.kind === "Text"
-        ? entity.body
-        : entity.kind === "Link"
-        ? entity.url
-        : "";
-
-    return [
-      id,
-      [title || "", entityText, metadataText].join(" ").toLowerCase(),
-    ] as const;
-  })
-);
+const SEARCH = createSearchClient();
+const APPLY_CHUNK = 64;
+const HIGHLIGHT_LIMIT = 40;
 
 const clearSearchHighlight = () => {
   if (typeof CSS !== "undefined") {
@@ -62,6 +46,23 @@ const highlightMatches = (matching: HTMLElement[], query: string) => {
   });
 
   registry.set("search", new Highlight(...ranges));
+};
+
+const scheduleIdle = (work: () => void) => {
+  if (typeof requestIdleCallback === "function") {
+    return requestIdleCallback(work, { timeout: 80 });
+  }
+
+  return window.setTimeout(work, 0);
+};
+
+const cancelIdle = (handle: number) => {
+  if (typeof cancelIdleCallback === "function") {
+    cancelIdleCallback(handle);
+    return;
+  }
+
+  window.clearTimeout(handle);
 };
 
 interface IndexContext extends PageJS.Context {
@@ -149,17 +150,62 @@ const index = (ctx: IndexContext) => {
     reset();
   }
 
-  let searchFrame = 0;
+  let requestId = 0;
+  let applyFrame = 0;
+  let highlightIdle = 0;
   let lastQuery = "";
   const entriesById = new Map<number, HTMLElement>();
-  const matching = new Set<HTMLElement>();
 
   DOM.contents()
     .querySelectorAll<HTMLElement>(".EntryFilter")
     .forEach((entry) => {
       entriesById.set(Number(entry.dataset.id), entry);
-      matching.add(entry);
     });
+
+  const entries = Array.from(entriesById.entries());
+
+  const cancelWork = () => {
+    cancelAnimationFrame(applyFrame);
+    cancelIdle(highlightIdle);
+  };
+
+  const applyResult = (query: string, ids: number[], token: number) => {
+    const matched = new Set(ids);
+    let offset = 0;
+
+    const step = () => {
+      if (token !== requestId) return;
+
+      const end = Math.min(offset + APPLY_CHUNK, entries.length);
+      for (let i = offset; i < end; i++) {
+        const [id, entry] = entries[i];
+        const hidden = Boolean(query) && !matched.has(id);
+        if (entry.hidden !== hidden) entry.hidden = hidden;
+      }
+
+      offset = end;
+      if (offset < entries.length) {
+        applyFrame = requestAnimationFrame(step);
+        return;
+      }
+
+      if (query && ids.length <= HIGHLIGHT_LIMIT) {
+        const visible = ids
+          .map((id) => entriesById.get(id))
+          .filter((entry): entry is HTMLElement => Boolean(entry));
+        highlightIdle = scheduleIdle(() => {
+          if (token !== requestId) return;
+          highlightMatches(visible, query);
+        });
+        return;
+      }
+
+      clearSearchHighlight();
+    };
+
+    cancelWork();
+    applyFrame = requestAnimationFrame(step);
+  };
 
   const handleSort = (event: Event) => {
     const { value } = <HTMLSelectElement>event.currentTarget;
@@ -172,27 +218,14 @@ const index = (ctx: IndexContext) => {
       .trim()
       .toLowerCase();
 
-    cancelAnimationFrame(searchFrame);
-    searchFrame = requestAnimationFrame(() => {
-      if (query === lastQuery) return;
-      lastQuery = query;
+    if (query === lastQuery) return;
+    lastQuery = query;
 
-      const nextMatching = new Set<HTMLElement>();
-
-      entriesById.forEach((entry, id) => {
-        const text = SEARCH_INDEX.get(id) || "";
-        if (query && !text.includes(query)) {
-          if (matching.has(entry)) entry.hidden = true;
-          return;
-        }
-
-        nextMatching.add(entry);
-        if (!matching.has(entry)) entry.hidden = false;
-      });
-
-      matching.clear();
-      nextMatching.forEach((entry) => matching.add(entry));
-      highlightMatches(Array.from(matching), query);
+    const token = ++requestId;
+    cancelWork();
+    SEARCH.query(token, query, (result) => {
+      if (result.id !== requestId) return;
+      applyResult(result.query, result.ids, token);
     });
   };
 
@@ -200,7 +233,8 @@ const index = (ctx: IndexContext) => {
   DOM.search().addEventListener("input", handleSearch);
 
   ctx.teardown = () => {
-    cancelAnimationFrame(searchFrame);
+    requestId += 1;
+    cancelWork();
     clearSearchHighlight();
     DOM.navigation().removeEventListener("input", handleSort);
     DOM.search().removeEventListener("input", handleSearch);
