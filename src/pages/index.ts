@@ -6,8 +6,7 @@ import { createSearchClient } from "../search";
 
 const STATE = { reset: false };
 const SEARCH = createSearchClient();
-const APPLY_CHUNK = 64;
-const HIGHLIGHT_LIMIT = 40;
+let SEARCH_REQUEST_ID = 0;
 
 const clearSearchHighlight = () => {
   if (typeof CSS !== "undefined") {
@@ -15,54 +14,29 @@ const clearSearchHighlight = () => {
   }
 };
 
-const highlightMatches = (matching: HTMLElement[], query: string) => {
-  clearSearchHighlight();
+const addEntryRanges = (
+  ranges: Range[],
+  entry: HTMLElement,
+  query: string
+) => {
+  const walker = document.createTreeWalker(entry, NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode();
 
-  const registry = (CSS as any).highlights;
-  const Highlight = (window as any).Highlight;
-  if (!query || !registry || !Highlight) return;
+  while (node) {
+    const text = node.nodeValue || "";
+    const normalized = text.toLowerCase();
+    let index = normalized.indexOf(query);
 
-  const ranges: Range[] = [];
-
-  matching.forEach((entry) => {
-    const walker = document.createTreeWalker(entry, NodeFilter.SHOW_TEXT);
-    let node = walker.nextNode();
-
-    while (node) {
-      const text = node.nodeValue || "";
-      const normalized = text.toLowerCase();
-      let index = normalized.indexOf(query);
-
-      while (index !== -1) {
-        const range = document.createRange();
-        range.setStart(node, index);
-        range.setEnd(node, index + query.length);
-        ranges.push(range);
-        index = normalized.indexOf(query, index + query.length);
-      }
-
-      node = walker.nextNode();
+    while (index !== -1) {
+      const range = document.createRange();
+      range.setStart(node, index);
+      range.setEnd(node, index + query.length);
+      ranges.push(range);
+      index = normalized.indexOf(query, index + query.length);
     }
-  });
 
-  registry.set("search", new Highlight(...ranges));
-};
-
-const scheduleIdle = (work: () => void) => {
-  if (typeof requestIdleCallback === "function") {
-    return requestIdleCallback(work, { timeout: 80 });
+    node = walker.nextNode();
   }
-
-  return window.setTimeout(work, 0);
-};
-
-const cancelIdle = (handle: number) => {
-  if (typeof cancelIdleCallback === "function") {
-    cancelIdleCallback(handle);
-    return;
-  }
-
-  window.clearTimeout(handle);
 };
 
 interface IndexContext extends PageJS.Context {
@@ -150,11 +124,18 @@ const index = (ctx: IndexContext) => {
     reset();
   }
 
-  let requestId = 0;
+  let activeRequestId = 0;
   let applyFrame = 0;
-  let highlightIdle = 0;
-  let lastQuery = "";
+  let highlightFrame = 0;
+  let searchDelay = 0;
+  let applying = false;
+  let activeQuery = "";
+  let activeIds = new Set<number>();
+  let lastQuery = (<HTMLInputElement>DOM.search()).value
+    .trim()
+    .toLowerCase();
   const entriesById = new Map<number, HTMLElement>();
+  const visibleEntries = new Set<HTMLElement>();
 
   DOM.contents()
     .querySelectorAll<HTMLElement>(".EntryFilter")
@@ -166,45 +147,94 @@ const index = (ctx: IndexContext) => {
 
   const cancelWork = () => {
     cancelAnimationFrame(applyFrame);
-    cancelIdle(highlightIdle);
+    cancelAnimationFrame(highlightFrame);
+    window.clearTimeout(searchDelay);
+  };
+
+  const scheduleHighlight = (token: number) => {
+    cancelAnimationFrame(highlightFrame);
+    highlightFrame = requestAnimationFrame(() => {
+      if (token !== activeRequestId || applying) return;
+
+      clearSearchHighlight();
+      if (activeQuery.length < 2) return;
+
+      const registry = (CSS as any).highlights;
+      const Highlight = (window as any).Highlight;
+      if (!registry || !Highlight) return;
+
+      const ranges: Range[] = [];
+      visibleEntries.forEach((entry) => {
+        const id = Number(entry.dataset.id);
+        if (activeIds.has(id) && !entry.hidden) {
+          addEntryRanges(ranges, entry, activeQuery);
+        }
+      });
+
+      registry.set("search", new Highlight(...ranges));
+    });
   };
 
   const applyResult = (query: string, ids: number[], token: number) => {
     const matched = new Set(ids);
-    let offset = 0;
+    activeQuery = query;
+    activeIds = matched;
+    applying = true;
 
-    const step = () => {
-      if (token !== requestId) return;
+    cancelWork();
+    clearSearchHighlight();
+    applyFrame = requestAnimationFrame(() => {
+      if (token !== activeRequestId) return;
 
-      const end = Math.min(offset + APPLY_CHUNK, entries.length);
-      for (let i = offset; i < end; i++) {
+      for (let i = 0; i < entries.length; i++) {
         const [id, entry] = entries[i];
         const hidden = Boolean(query) && !matched.has(id);
         if (entry.hidden !== hidden) entry.hidden = hidden;
       }
 
-      offset = end;
-      if (offset < entries.length) {
-        applyFrame = requestAnimationFrame(step);
-        return;
-      }
+      applying = false;
+      scheduleHighlight(token);
+    });
+  };
 
-      if (query && ids.length <= HIGHLIGHT_LIMIT) {
-        const visible = ids
-          .map((id) => entriesById.get(id))
-          .filter((entry): entry is HTMLElement => Boolean(entry));
-        highlightIdle = scheduleIdle(() => {
-          if (token !== requestId) return;
-          highlightMatches(visible, query);
-        });
-        return;
-      }
+  const observer = new IntersectionObserver(
+    (observed) => {
+      observed.forEach((item) => {
+        const entry = item.target as HTMLElement;
+        if (item.isIntersecting) {
+          visibleEntries.add(entry);
+        } else {
+          visibleEntries.delete(entry);
+        }
+      });
 
-      clearSearchHighlight();
+      if (activeQuery && !applying) {
+        scheduleHighlight(activeRequestId);
+      }
+    },
+    { rootMargin: "200px 0px" }
+  );
+  entries.forEach(([, entry]) => observer.observe(entry));
+
+  const runSearch = (query: string) => {
+    const token = ++SEARCH_REQUEST_ID;
+    activeRequestId = token;
+    applying = true;
+    cancelWork();
+    clearSearchHighlight();
+
+    const dispatch = () => {
+      SEARCH.query(token, query, (result) => {
+        if (result.id !== activeRequestId) return;
+        applyResult(result.query, result.ids, token);
+      });
     };
 
-    cancelWork();
-    applyFrame = requestAnimationFrame(step);
+    if (query.length === 1) {
+      searchDelay = window.setTimeout(dispatch, 120);
+    } else {
+      dispatch();
+    }
   };
 
   const handleSort = (event: Event) => {
@@ -220,22 +250,21 @@ const index = (ctx: IndexContext) => {
 
     if (query === lastQuery) return;
     lastQuery = query;
-
-    const token = ++requestId;
-    cancelWork();
-    SEARCH.query(token, query, (result) => {
-      if (result.id !== requestId) return;
-      applyResult(result.query, result.ids, token);
-    });
+    runSearch(query);
   };
 
   DOM.navigation().addEventListener("input", handleSort);
   DOM.search().addEventListener("input", handleSearch);
 
+  if (lastQuery) {
+    runSearch(lastQuery);
+  }
+
   ctx.teardown = () => {
-    requestId += 1;
+    activeRequestId = -1;
     cancelWork();
     clearSearchHighlight();
+    observer.disconnect();
     DOM.navigation().removeEventListener("input", handleSort);
     DOM.search().removeEventListener("input", handleSearch);
   };
