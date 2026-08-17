@@ -130,6 +130,31 @@ table {
   left: 0;
   display: flex;
 
+  &__navigation {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    flex: 0 0 auto;
+    padding-top: 0.5rem;
+    background-color: white;
+
+    &::before {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: 100%;
+      left: 0;
+      height: 3rem;
+      pointer-events: none;
+      background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0),
+        white
+      );
+    }
+  }
+
   &__close {
     padding: 0;
     flex-basis: 10%;
@@ -144,8 +169,20 @@ table {
   }
 
   &__content {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
     flex-basis: 90%;
+    height: 100%;
+    overflow: hidden;
     background-color: white;
     padding: 0.5rem 1rem;
+  }
+
+  &__body {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
   }
 }
