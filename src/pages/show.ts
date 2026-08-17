@@ -1,16 +1,22 @@
 import page from "page";
 import { tag, format, strip, DOM } from "../util";
-import { SHOW_QUERY, ShowQuery, request } from "../request";
+import { CONTENTS } from "../generated/content";
 
 type ShowContext = PageJS.Context & {
   query?: Record<string, string>;
   teardown: () => void;
 };
 
-export const show = async (ctx: ShowContext) => {
+export const show = (ctx: ShowContext) => {
   const {
     params: { id },
   } = ctx;
+  const content = CONTENTS.find((entry) => String(entry.id) === id);
+
+  if (!content) {
+    page("/");
+    return;
+  }
 
   DOM.root().appendChild(
     tag(`
@@ -25,21 +31,7 @@ export const show = async (ctx: ShowContext) => {
     `)
   );
 
-  let data: ShowQuery;
-
-  try {
-    data = await request<ShowQuery>({ query: SHOW_QUERY, variables: { id } });
-  } catch (err) {
-    console.error(err);
-    page("/");
-    return;
-  }
-
-  const {
-    strata: {
-      content: { title, entity, metadata, createdAt, timestamp },
-    },
-  } = data;
+  const { title, entity, metadata, createdAt, timestamp } = content;
 
   const html = (() => {
     switch (entity.kind) {

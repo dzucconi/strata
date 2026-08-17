@@ -6,15 +6,21 @@
   "scripts": {
     "clean": "rm -rf ./dist",
     "copy": "cp -r ./public/* ./dist",
+    "generate": "node ./scripts/generate-content.js",
     "compile": "parcel build src/index.html",
-    "build": "yarn clean && yarn compile && yarn copy",
-    "start": "parcel src/index.html --open"
+    "build": "yarn clean && yarn generate && yarn compile && yarn copy",
+    "start": "yarn generate && parcel src/index.html --open",
+    "preview": "serve --single dist"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "devDependencies": {
     "@types/page": "1.11.5",
     "@types/qs": "6.9.7",
     "parcel": "1.12.4",
     "sass": "1.49.9",
+    "serve": "^14.2.6",
     "typescript": "4.6.2"
   },
   "dependencies": {

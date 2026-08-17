@@ -23,7 +23,6 @@ export const format = (input: string) => {
 export const DOM = {
   root: () => document.getElementById("root")!,
   contents: () => document.getElementById("contents")!,
-  sentinel: () => document.getElementById("sentinel")!,
   modal: () => document.getElementById("modal")!,
   navigation: () => document.getElementById("navigation")!,
 };

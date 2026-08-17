@@ -2,6 +2,27 @@
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/b3ee12fb-a8f3-415f-ab55-aea1b6d61425/deploy-status)](https://app.netlify.com/sites/damonzucconi-strata/deploys)
 
+## Local development
+
+Requires Node.js 18 or newer.
+
+```sh
+yarn install
+yarn start
+```
+
+This fetches the complete collection, generates the local static data, starts
+Parcel, and opens the site in a browser.
+
+To test the same production build that Netlify publishes:
+
+```sh
+yarn build
+yarn preview
+```
+
+The preview command prints the local URL to open.
+
 ## Meta
 
 - **State**: production
