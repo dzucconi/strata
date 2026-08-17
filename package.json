@@ -18,14 +18,12 @@
   },
   "devDependencies": {
     "@types/page": "1.11.5",
-    "@types/qs": "6.9.7",
     "parcel": "1.12.4",
     "sass": "1.49.9",
     "serve": "^14.2.6",
     "typescript": "4.6.2"
   },
   "dependencies": {
-    "page": "^1.11.6",
-    "qs": "^6.10.1"
+    "page": "^1.11.6"
   }
 }

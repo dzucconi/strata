@@ -1,6 +1,6 @@
 import page from "page";
 import { tag, format, strip, DOM } from "../util";
-import { CONTENTS } from "../generated/content";
+import { CONTENTS_BY_ID } from "../generated/content";
 
 type ShowContext = PageJS.Context & {
   query?: Record<string, string>;
@@ -11,7 +11,7 @@ export const show = (ctx: ShowContext) => {
   const {
     params: { id },
   } = ctx;
-  const content = CONTENTS.find((entry) => String(entry.id) === id);
+  const content = CONTENTS_BY_ID.get(id);
 
   if (!content) {
     page("/");
@@ -52,7 +52,7 @@ export const show = (ctx: ShowContext) => {
         return `
           <img
             class="Entry__thumb"
-            src="${entity.resized.urls._1x}"
+            src="${entity.resized.url}"
             width="${entity.resized.width}"
             height="${entity.resized.height}" />
         `;

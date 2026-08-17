@@ -21,7 +21,7 @@ const SEARCH_INDEX = new Map(
     return [
       id,
       [title || "", entityText, metadataText].join(" ").toLowerCase(),
-    ];
+    ] as const;
   })
 );
 
@@ -31,7 +31,7 @@ const clearSearchHighlight = () => {
   }
 };
 
-const highlightMatches = (entries: HTMLElement[], query: string) => {
+const highlightMatches = (matching: HTMLElement[], query: string) => {
   clearSearchHighlight();
 
   const registry = (CSS as any).highlights;
@@ -40,9 +40,7 @@ const highlightMatches = (entries: HTMLElement[], query: string) => {
 
   const ranges: Range[] = [];
 
-  entries.forEach((entry) => {
-    if (entry.hidden) return;
-
+  matching.forEach((entry) => {
     const walker = document.createTreeWalker(entry, NodeFilter.SHOW_TEXT);
     let node = walker.nextNode();
 
@@ -93,9 +91,12 @@ const index = (ctx: IndexContext) => {
               ? [
                   `<img
                     class="Entry__thumb"
-                    src="${entity.thumbnail.urls._1x}"
+                    src="${entity.thumbnail.url}"
                     width="${entity.thumbnail.width}"
-                    height="${entity.thumbnail.height}" />
+                    height="${entity.thumbnail.height}"
+                    loading="lazy"
+                    decoding="async"
+                    fetchpriority="low" />
                   `,
                 ]
               : []),
@@ -149,9 +150,16 @@ const index = (ctx: IndexContext) => {
   }
 
   let searchFrame = 0;
-  const entries = Array.from(
-    DOM.contents().querySelectorAll<HTMLElement>(".EntryFilter")
-  ) as HTMLElement[];
+  let lastQuery = "";
+  const entriesById = new Map<number, HTMLElement>();
+  const matching = new Set<HTMLElement>();
+
+  DOM.contents()
+    .querySelectorAll<HTMLElement>(".EntryFilter")
+    .forEach((entry) => {
+      entriesById.set(Number(entry.dataset.id), entry);
+      matching.add(entry);
+    });
 
   const handleSort = (event: Event) => {
     const { value } = <HTMLSelectElement>event.currentTarget;
@@ -166,11 +174,25 @@ const index = (ctx: IndexContext) => {
 
     cancelAnimationFrame(searchFrame);
     searchFrame = requestAnimationFrame(() => {
-      entries.forEach((entry) => {
-        const text = SEARCH_INDEX.get(Number(entry.dataset.id)) || "";
-        entry.hidden = !text.includes(query);
+      if (query === lastQuery) return;
+      lastQuery = query;
+
+      const nextMatching = new Set<HTMLElement>();
+
+      entriesById.forEach((entry, id) => {
+        const text = SEARCH_INDEX.get(id) || "";
+        if (query && !text.includes(query)) {
+          if (matching.has(entry)) entry.hidden = true;
+          return;
+        }
+
+        nextMatching.add(entry);
+        if (!matching.has(entry)) entry.hidden = false;
       });
-      highlightMatches(entries, query);
+
+      matching.clear();
+      nextMatching.forEach((entry) => matching.add(entry));
+      highlightMatches(Array.from(matching), query);
     });
   };
 

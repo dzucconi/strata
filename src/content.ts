@@ -6,18 +6,12 @@ export type Entity =
       thumbnail: {
         width: number;
         height: number;
-        urls: {
-          _1x: string;
-          _2x: string;
-        };
+        url: string;
       };
       resized: {
         width: number;
         height: number;
-        urls: {
-          _1x: string;
-          _2x: string;
-        };
+        url: string;
       };
     };
 
