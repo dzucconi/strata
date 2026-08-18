@@ -134,10 +134,10 @@ export const renderModal = (
         <nav class="Modal__navigation Ignore" aria-label="Entry navigation">
           <button id="previous" type="button" ${
             previousId ? `data-id="${previousId}"` : "disabled"
-          }>previous</button>
+          }>← previous</button>
           <button id="next" type="button" ${
             nextId ? `data-id="${nextId}"` : "disabled"
-          }>next</button>
+          }>next →</button>
         </nav>
       </div>
     </div>
