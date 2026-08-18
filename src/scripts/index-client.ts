@@ -1,5 +1,6 @@
 import { createSearchClient } from "./search";
-import type { SearchIndex } from "../lib/search-index";
+import { renderModal } from "../lib/render";
+import type { Content } from "../lib/types";
 
 const DOM = {
   root: () => document.getElementById("root")!,
@@ -9,10 +10,13 @@ const DOM = {
   search: () => document.getElementById("search") as HTMLInputElement,
 };
 
-const SEARCH_INDEX = JSON.parse(
-  document.getElementById("search-index")!.textContent!
-) as SearchIndex;
-const SEARCH = createSearchClient(SEARCH_INDEX);
+const CONTENTS = JSON.parse(
+  document.getElementById("contents-data")!.textContent!
+) as Content[];
+const CONTENTS_BY_ID = new Map(
+  CONTENTS.map((content) => [String(content.id), content])
+);
+const SEARCH = createSearchClient(CONTENTS);
 let SEARCH_REQUEST_ID = 0;
 
 const clearSearchHighlight = () => {
@@ -210,47 +214,9 @@ const closeModal = () => {
   teardownModal = null;
 };
 
-type EntryPage = { modal: HTMLElement; title: string };
-
-const PAGE_CACHE = new Map<string, Promise<EntryPage | null>>();
-
-const fetchEntryPage = (id: string): Promise<EntryPage | null> => {
-  const cached = PAGE_CACHE.get(id);
-  if (cached) return cached;
-
-  const request: Promise<EntryPage | null> = fetch(`/${id}`)
-    .then(async (response) => {
-      if (!response.ok) return null;
-
-      const doc = new DOMParser().parseFromString(
-        await response.text(),
-        "text/html"
-      );
-      const modal = doc.getElementById("modal");
-      return modal ? { modal, title: doc.title } : null;
-    })
-    .catch(() => null);
-
-  PAGE_CACHE.set(id, request);
-  request.then((page) => {
-    if (!page) PAGE_CACHE.delete(id);
-  });
-
-  return request;
-};
-
-const prefetchEntryPage = (id: string | null) => {
-  if (id) fetchEntryPage(id);
-};
-
-const openModal = async (id: string, push: boolean): Promise<boolean> => {
-  const entryPage = await fetchEntryPage(id);
-  if (!entryPage) return false;
-
-  const modal = document.importNode(entryPage.modal, true);
-  const pageTitle = entryPage.title;
-
-  closeModal();
+const openModal = (id: string, push: boolean) => {
+  const content = CONTENTS_BY_ID.get(id);
+  if (!content) return false;
 
   const visibleIds = Array.from(
     document.querySelectorAll<HTMLElement>(
@@ -266,18 +232,12 @@ const openModal = async (id: string, push: boolean): Promise<boolean> => {
   const nextId =
     position < navigationIds.length - 1 ? navigationIds[position + 1] : null;
 
+  const modal = new DOMParser().parseFromString(
+    renderModal(content, previousId, nextId),
+    "text/html"
+  ).body.firstElementChild as HTMLElement;
   const previous = modal.querySelector<HTMLButtonElement>("#previous")!;
   const next = modal.querySelector<HTMLButtonElement>("#next")!;
-  const configure = (button: HTMLButtonElement, target: string | null) => {
-    button.disabled = !target;
-    if (target) {
-      button.dataset.id = target;
-    } else {
-      delete button.dataset.id;
-    }
-  };
-  configure(previous, previousId);
-  configure(next, nextId);
 
   const navigate = (target: string | null) => {
     if (target) {
@@ -315,12 +275,10 @@ const openModal = async (id: string, push: boolean): Promise<boolean> => {
   next.addEventListener("click", handleNext);
   window.addEventListener("keydown", handleKeydown);
 
+  closeModal();
   DOM.root().appendChild(modal);
-  document.title = pageTitle;
+  document.title = content.title ? `${content.title} — Strata` : "Strata";
   if (push) history.pushState({}, "", `/${id}`);
-
-  prefetchEntryPage(previousId);
-  prefetchEntryPage(nextId);
 
   teardownModal = () => {
     window.removeEventListener("keydown", handleKeydown);
@@ -332,13 +290,6 @@ const openModal = async (id: string, push: boolean): Promise<boolean> => {
 };
 
 const setupModal = () => {
-  DOM.contents().addEventListener("mouseover", (event) => {
-    const entry = (event.target as HTMLElement).closest<HTMLElement>(
-      ".EntryFilter"
-    );
-    prefetchEntryPage(entry?.dataset.id ?? null);
-  });
-
   DOM.contents().addEventListener("click", (event) => {
     if (
       event.defaultPrevented ||
@@ -360,9 +311,7 @@ const setupModal = () => {
     if (!id) return;
 
     event.preventDefault();
-    openModal(id, true).then((opened) => {
-      if (!opened) location.href = `/${id}`;
-    });
+    if (!openModal(id, true)) location.href = `/${id}`;
   });
 
   window.addEventListener("popstate", () => {

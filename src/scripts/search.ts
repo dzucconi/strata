@@ -1,4 +1,4 @@
-import type { SearchIndex } from "../lib/search-index";
+import type { Content } from "../lib/types";
 
 export type SearchResult = {
   id: number;
@@ -11,7 +11,23 @@ var index = [];
 onmessage = function (event) {
   var data = event.data;
   if (data.type === "init") {
-    index = data.index;
+    index = data.contents.map(function (content) {
+      var entityText =
+        content.entity.kind === "Text"
+          ? content.entity.body
+          : content.entity.kind === "Link"
+          ? content.entity.url
+          : "";
+      var metadataText = Object.keys(content.metadata)
+        .map(function (key) {
+          return key + " " + content.metadata[key];
+        })
+        .join(" ");
+      return [
+        content.id,
+        [content.title || "", entityText, metadataText].join(" ").toLowerCase()
+      ];
+    });
     return;
   }
   if (data.type === "query") {
@@ -27,16 +43,28 @@ onmessage = function (event) {
 };
 `;
 
-const matchOnMain = (index: SearchIndex, query: string): number[] => {
+const matchOnMain = (contents: Content[], query: string): number[] => {
   const ids: number[] = [];
-  for (let i = 0; i < index.length; i++) {
-    const [id, text] = index[i];
+  for (let i = 0; i < contents.length; i++) {
+    const { id, title, entity, metadata } = contents[i];
+    const entityText =
+      entity.kind === "Text"
+        ? entity.body
+        : entity.kind === "Link"
+        ? entity.url
+        : "";
+    const metadataText = Object.keys(metadata)
+      .map((key) => `${key} ${metadata[key]}`)
+      .join(" ");
+    const text = [title || "", entityText, metadataText]
+      .join(" ")
+      .toLowerCase();
     if (!query || text.indexOf(query) !== -1) ids.push(id);
   }
   return ids;
 };
 
-export const createSearchClient = (index: SearchIndex) => {
+export const createSearchClient = (contents: Content[]) => {
   let worker: Worker | null = null;
   const callbacks: Record<number, (result: SearchResult) => void> =
     Object.create(null);
@@ -54,7 +82,7 @@ export const createSearchClient = (index: SearchIndex) => {
       delete callbacks[event.data.id];
       callback(event.data);
     });
-    worker.postMessage({ type: "init", index });
+    worker.postMessage({ type: "init", contents });
   } catch {
     worker = null;
   }
@@ -65,7 +93,7 @@ export const createSearchClient = (index: SearchIndex) => {
     onResult: (result: SearchResult) => void
   ) => {
     if (!worker) {
-      onResult({ id, query: value, ids: matchOnMain(index, value) });
+      onResult({ id, query: value, ids: matchOnMain(contents, value) });
       return;
     }
 

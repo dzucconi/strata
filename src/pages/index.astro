@@ -3,7 +3,6 @@ import Layout from "../layouts/Layout.astro";
 import { applyCacheHeaders } from "../lib/cache";
 import { getContents } from "../lib/content";
 import { renderIndexEntries } from "../lib/render";
-import { buildSearchIndex } from "../lib/search-index";
 
 export const prerender = false;
 
@@ -11,10 +10,7 @@ applyCacheHeaders(Astro.response.headers);
 
 const contents = await getContents();
 const entries = renderIndexEntries(contents);
-const searchIndex = JSON.stringify(buildSearchIndex(contents)).replace(
-  /</g,
-  "\\u003c"
-);
+const contentsData = JSON.stringify(contents).replace(/</g, "\\u003c");
 ---
 
 <Layout>
@@ -30,9 +26,9 @@ const searchIndex = JSON.stringify(buildSearchIndex(contents)).replace(
   </select>
   <div class="Ignore" id="contents"><Fragment set:html={entries} /></div>
   <script
-    id="search-index"
+    id="contents-data"
     type="application/json"
-    set:html={searchIndex}
+    set:html={contentsData}
   />
   <script src="../scripts/index-client.ts"></script>
 </Layout>
