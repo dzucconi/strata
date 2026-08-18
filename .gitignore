@@ -1,5 +1,5 @@
-.cache
+.astro
 .DS_Store
+.netlify
 dist
 node_modules
-src/generated

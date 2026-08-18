@@ -1,0 +1,28 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { applyCacheHeaders } from "../lib/cache";
+import { getContentById } from "../lib/content";
+import { renderModal } from "../lib/render";
+
+export const prerender = false;
+
+applyCacheHeaders(Astro.response.headers);
+
+const entry = await getContentById(String(Astro.params.id));
+
+if (!entry) {
+  const headers = new Headers({
+    "Content-Type": "text/plain; charset=utf-8",
+  });
+  applyCacheHeaders(headers);
+  return new Response("Not Found", { status: 404, headers });
+}
+
+const { content, previousId, nextId } = entry;
+const modal = renderModal(content, previousId, nextId);
+---
+
+<Layout title={content.title ? `${content.title} — Strata` : "Strata"}>
+  <Fragment set:html={modal} />
+  <script src="../scripts/show-client.ts"></script>
+</Layout>
