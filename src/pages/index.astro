@@ -14,16 +14,14 @@ const contentsData = JSON.stringify(contents).replace(/</g, "\\u003c");
 ---
 
 <Layout>
-  <input
-    id="search"
-    type="search"
-    placeholder="Search"
-    aria-label="Search entries"
-  />
-  <select id="navigation">
-    <option value="CREATED_AT_DESC">descending</option>
-    <option value="CREATED_AT_ASC">ascending</option>
-  </select>
+  <div class="Search Ignore">
+    <input
+      id="search"
+      type="search"
+      placeholder="Search"
+      aria-label="Search entries"
+    />
+  </div>
   <div class="Ignore" id="contents"><Fragment set:html={entries} /></div>
   <script
     id="contents-data"

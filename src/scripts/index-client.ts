@@ -6,8 +6,8 @@ const DOM = {
   root: () => document.getElementById("root")!,
   contents: () => document.getElementById("contents")!,
   entries: () => document.querySelector<HTMLElement>(".Entries")!,
-  navigation: () => document.getElementById("navigation") as HTMLSelectElement,
   search: () => document.getElementById("search") as HTMLInputElement,
+  searchBar: () => document.querySelector<HTMLElement>(".Search")!,
 };
 
 const CONTENTS = JSON.parse(
@@ -177,33 +177,70 @@ const setupSearch = () => {
   if (lastQuery) {
     runSearch(lastQuery);
   }
-};
 
-const sortFromLocation = () =>
-  new URLSearchParams(location.search).get("sort") === "CREATED_AT_ASC"
-    ? "CREATED_AT_ASC"
-    : "CREATED_AT_DESC";
+  const search = DOM.search();
+  const searchBar = DOM.searchBar();
+  let lastScrollY = window.scrollY;
+  let scrollOriginY = window.scrollY;
+  let scrollDirection = 0;
+  let searchHidden = false;
 
-const applySort = (sort: string) => {
-  const container = DOM.entries();
-  const current = container.dataset.sort || "CREATED_AT_DESC";
+  const setSearchHidden = (hidden: boolean) => {
+    if (searchHidden === hidden) return;
+    searchHidden = hidden;
+    searchBar.classList.toggle("Search--hidden", hidden);
+  };
 
-  if (current !== sort) {
-    const reversed = Array.from(container.children).reverse();
-    reversed.forEach((child) => container.appendChild(child));
-    container.dataset.sort = sort;
-  }
+  const revealSearch = () => {
+    setSearchHidden(false);
+  };
 
-  DOM.navigation().value = sort;
-};
+  window.addEventListener(
+    "scroll",
+    () => {
+      const y = window.scrollY;
+      const delta = y - lastScrollY;
+      lastScrollY = y;
 
-const setupSort = () => {
-  applySort(sortFromLocation());
+      if (document.activeElement === search || y < 16) {
+        scrollOriginY = y;
+        revealSearch();
+        return;
+      }
 
-  DOM.navigation().addEventListener("input", (event) => {
-    const { value } = <HTMLSelectElement>event.currentTarget;
-    history.pushState({}, "", `/?sort=${value}`);
-    applySort(value);
+      const direction = Math.sign(delta);
+      if (direction && direction !== scrollDirection) {
+        scrollDirection = direction;
+        scrollOriginY = y;
+      }
+
+      if (direction > 0 && y > 64 && y - scrollOriginY > 48) {
+        setSearchHidden(true);
+      } else if (direction < 0 && scrollOriginY - y > 8) {
+        revealSearch();
+      }
+    },
+    { passive: true }
+  );
+
+  window.addEventListener("keydown", (event) => {
+    if (
+      !(event.metaKey || event.ctrlKey) ||
+      event.altKey ||
+      event.shiftKey ||
+      event.key.toLowerCase() !== "f"
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    if (document.getElementById("modal")) {
+      history.pushState({}, "", "/");
+      closeModal();
+    }
+    revealSearch();
+    search.focus();
+    search.select();
   });
 };
 
@@ -315,8 +352,6 @@ const setupModal = () => {
   });
 
   window.addEventListener("popstate", () => {
-    applySort(sortFromLocation());
-
     const match = location.pathname.match(/^\/([^/]+)$/);
     if (match) {
       openModal(match[1], false);
@@ -327,5 +362,4 @@ const setupModal = () => {
 };
 
 setupSearch();
-setupSort();
 setupModal();
