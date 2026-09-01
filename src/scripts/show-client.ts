@@ -1,3 +1,7 @@
+import { bindEntryActions } from "./actions";
+
+bindEntryActions();
+
 const previous = document.getElementById("previous") as HTMLButtonElement;
 const next = document.getElementById("next") as HTMLButtonElement;
 

@@ -187,8 +187,20 @@ table {
     outline: 1px solid blue;
   }
 
-  &__find {
-    color: blue;
+  &__toolbar {
+    position: relative;
+    display: inline-block;
+  }
+
+  &__more {
+    min-width: 2.25em;
+  }
+
+  &__picker {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
   }
 }
 
@@ -206,13 +218,12 @@ table {
   display: flex;
 
   &__navigation {
-    position: relative;
-    z-index: 1;
     display: flex;
-    justify-content: space-between;
-    flex: 0 0 auto;
-    padding-top: 0.5rem;
-    background-color: white;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0.5rem 0 0;
+    padding: 0;
 
     button {
       font-family:
@@ -222,17 +233,12 @@ table {
         "Segoe UI",
         sans-serif;
     }
+  }
 
-    &::before {
-      content: "";
-      position: absolute;
-      right: 0;
-      bottom: 100%;
-      left: 0;
-      height: 3rem;
-      pointer-events: none;
-      background: linear-gradient(to bottom, rgba(255, 255, 255, 0), white);
-    }
+  &__nav-start {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
   }
 
   &__close {

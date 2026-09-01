@@ -1,5 +1,6 @@
 import { createSearchClient } from "./search";
 import { renderModal } from "../lib/render";
+import { bindEntryActions } from "./actions";
 import type { Content } from "../lib/types";
 
 const DOM = {
@@ -314,6 +315,7 @@ const openModal = (id: string, push: boolean) => {
 
   closeModal();
   DOM.root().appendChild(modal);
+  bindEntryActions(modal);
   document.title = content.title ? `${content.title} — Strata` : "Strata";
   if (push) history.pushState({}, "", `/${id}`);
 

@@ -5,6 +5,9 @@ import type { Content } from "./types";
  */
 export const strip = (html: string) => html.replace(/>\s+</g, "><");
 
+const escapeAttribute = (value: string) =>
+  value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+
 export const format = (input: string) => {
   input = input.replace(/\r\n?/, "\n").trim();
 
@@ -55,32 +58,21 @@ export const renderIndexEntries = (contents: Content[]) => {
           </div>
         `;
       })
-      .join("")}</div>`
+      .join("")}</div>`,
   );
 };
 
 export const renderModal = (
   content: Content,
   previousId: string | null,
-  nextId: string | null
+  nextId: string | null,
 ) => {
   const { id, title, entity, metadata, createdAt, timestamp } = content;
 
   const html = (() => {
     switch (entity.kind) {
       case "Text":
-        return `
-          ${format(entity.body)}
-          <a
-            class="Entry__find"
-            rel="nofollow"
-            target="_blank"
-            href="https://www.google.com/search?q=${encodeURIComponent(
-              entity.body
-            )}">
-            Find source
-          </a>
-        `;
+        return format(entity.body);
       case "Image":
         return `
           <img
@@ -93,6 +85,25 @@ export const renderModal = (
         return "";
     }
   })();
+
+  const actions =
+    entity.kind === "Text"
+      ? `
+        <div class="Entry__toolbar Ignore">
+          <button type="button" class="Entry__more" aria-haspopup="listbox" aria-label="More">...</button>
+          <select
+            class="Entry__picker"
+            aria-hidden="true"
+            tabindex="-1"
+            data-copy="${escapeAttribute(entity.body)}"
+            data-find="https://www.google.com/search?q=${encodeURIComponent(entity.body)}">
+            <option value="" selected disabled hidden></option>
+            <option value="copy">Copy</option>
+            <option value="find">Find source</option>
+          </select>
+        </div>
+      `
+      : "";
 
   return strip(`
     <div id="modal" class="Modal Ignore" data-id="${id}">
@@ -129,16 +140,19 @@ export const renderModal = (
               </table>
           `
           }
-        </div>
 
-        <nav class="Modal__navigation Ignore" aria-label="Entry navigation">
-          <button id="previous" type="button" ${
-            previousId ? `data-id="${previousId}"` : "disabled"
-          }>← previous</button>
-          <button id="next" type="button" ${
-            nextId ? `data-id="${nextId}"` : "disabled"
-          }>next →</button>
-        </nav>
+          <nav class="Modal__navigation Ignore" aria-label="Entry navigation">
+            <div class="Modal__nav-start Ignore">
+              <button id="previous" type="button" ${
+                previousId ? `data-id="${previousId}"` : "disabled"
+              }>← previous</button>
+              ${actions}
+              <button id="next" type="button" ${
+                nextId ? `data-id="${nextId}"` : "disabled"
+              }>next →</button>
+            </div>
+          </nav>
+        </div>
       </div>
     </div>
   `);
